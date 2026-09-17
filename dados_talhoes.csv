@@ -1,0 +1,7 @@
+cultura,largura_m,comprimento_m,area_m2,num_ruas,produto,taxa_ml_por_metro,volume_litros
+Café,120,200,24000,40,Fosfato,500,4000
+Café,150,180,27000,35,Fosfato,450,2835
+Café,100,220,22000,45,Ureia,400,3960
+Cana-de-açúcar,300,500,150000,60,Herbicida,600,18000
+Cana-de-açúcar,280,480,134400,55,Herbicida,650,17160
+Cana-de-açúcar,320,510,163200,58,Vinhaça,700,20706

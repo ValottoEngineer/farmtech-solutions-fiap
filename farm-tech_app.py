@@ -1,332 +1,195 @@
 """
-FarmTech Solutions - Aplicacao de Agricultura Digital
-======================================================
-Suporta 2 culturas: Cafe e Cana-de-acucar.
-
-- Cafe: area de plantio em forma de RETANGULO (talhao).
-        Insumo: Fosfato, aplicado via pulverizacao no trator,
-        na taxa de 500 mL por metro de rua (linha de plantio).
-- Cana-de-acucar: area de plantio em forma de TRAPEZIO (talhao
-        que acompanha a margem de uma estrada/curva de nivel).
-        Insumo: Herbicida, aplicado na taxa de X litros por hectare.
-
-Os dados sao armazenados em vetores (listas) paralelos, um vetor
-por atributo, conforme pedido no enunciado do estudo de caso.
+FarmTech Solutions - Aplicacao de apoio a Agricultura Digital
+Culturas suportadas: Cafe e Cana-de-acucar
 """
 
-import os
+import csv
 
-# ---------------------------------------------------------------------------
-# VETORES DE DADOS (armazenamento paralelo por posicao)
-# ---------------------------------------------------------------------------
-# Cada posicao "i" nesses vetores representa UM registro de plantio.
-vetor_cultura = []        # str: "Cafe" ou "Cana-de-acucar"
-vetor_formato = []        # str: "Retangulo" ou "Trapezio"
-vetor_dimensoes = []      # tuple: dimensoes usadas no calculo da area (em metros)
-vetor_area_m2 = []        # float: area calculada em m2
-vetor_insumo = []         # str: nome do insumo aplicado
-vetor_taxa_insumo = []    # float: taxa do insumo (mL/metro ou L/ha, conforme cultura)
-vetor_qtd_total_l = []    # float: quantidade TOTAL de insumo necessaria, em litros
+CAFE = "Café"
+CANA = "Cana-de-açúcar"
+CULTURAS_VALIDAS = (CAFE, CANA)
 
+CSV_PATH = "dados_talhoes.csv"
+CSV_COLUNAS = [
+    "cultura", "largura_m", "comprimento_m", "area_m2",
+    "num_ruas", "produto", "taxa_ml_por_metro", "volume_litros",
+]
 
-# ---------------------------------------------------------------------------
-# FUNCOES DE CALCULO DE AREA
-# ---------------------------------------------------------------------------
-def calcular_area_retangulo(comprimento, largura):
-    """Area do talhao de Cafe: retangulo simples (comprimento x largura)."""
-    return comprimento * largura
+talhoes = []
 
 
-def calcular_area_trapezio(base_maior, base_menor, altura):
-    """Area do talhao de Cana-de-acucar: trapezio ((B+b)/2 * h)."""
-    return ((base_maior + base_menor) / 2) * altura
+def exportar_csv():
+    with open(CSV_PATH, "w", newline="", encoding="utf-8") as arquivo:
+        escritor = csv.DictWriter(arquivo, fieldnames=CSV_COLUNAS)
+        escritor.writeheader()
+        for talhao in talhoes:
+            escritor.writerow(talhao)
 
 
-# ---------------------------------------------------------------------------
-# FUNCOES DE CALCULO DE MANEJO DE INSUMOS
-# ---------------------------------------------------------------------------
-def calcular_insumo_cafe(num_ruas, comprimento_rua_m, taxa_ml_por_metro):
-    """
-    Cafe: pulverizacao de fosfato com o trator.
-    Taxa informada em mL/metro de rua.
-    Total (litros) = num_ruas * comprimento_da_rua(m) * taxa(mL/m) / 1000
-    """
-    total_ml = num_ruas * comprimento_rua_m * taxa_ml_por_metro
-    total_litros = total_ml / 1000
-    return total_litros
+def ler_texto(mensagem):
+    while True:
+        valor = input(mensagem).strip()
+        if valor:
+            return valor
+        print("Valor não pode ser vazio. Tente novamente.")
 
 
-def calcular_insumo_cana(area_m2, taxa_l_por_hectare):
-    """
-    Cana-de-acucar: aplicacao de herbicida por hectare.
-    1 hectare = 10.000 m2
-    Total (litros) = (area_m2 / 10000) * taxa(L/ha)
-    """
-    area_ha = area_m2 / 10000
-    total_litros = area_ha * taxa_l_por_hectare
-    return total_litros
-
-
-# ---------------------------------------------------------------------------
-# FUNCOES AUXILIARES DE ENTRADA (com validacao via loop)
-# ---------------------------------------------------------------------------
-def ler_float(mensagem):
-    """Le um numero float do usuario, repetindo (loop) ate ser valido."""
+def ler_float(mensagem, minimo=0):
     while True:
         valor = input(mensagem).strip().replace(",", ".")
         try:
             numero = float(valor)
-            if numero <= 0:
-                print(">> O valor deve ser maior que zero. Tente novamente.")
+            if numero <= minimo:
+                print(f"Informe um número maior que {minimo}.")
                 continue
             return numero
         except ValueError:
-            print(">> Entrada invalida. Digite um numero (ex: 12.5).")
+            print("Valor inválido. Digite um número, ex: 12.5")
 
 
-def ler_int(mensagem):
-    """Le um numero inteiro do usuario, repetindo (loop) ate ser valido."""
+def ler_int(mensagem, minimo=1):
     while True:
         valor = input(mensagem).strip()
-        if valor.isdigit() and int(valor) > 0:
-            return int(valor)
-        print(">> Entrada invalida. Digite um numero inteiro maior que zero.")
+        try:
+            numero = int(valor)
+            if numero < minimo:
+                print(f"Informe um número inteiro maior ou igual a {minimo}.")
+                continue
+            return numero
+        except ValueError:
+            print("Valor inválido. Digite um número inteiro, ex: 10")
 
 
-def pausar():
-    input("\nPressione ENTER para continuar...")
+def escolher_cultura():
+    print("\nCulturas disponíveis:")
+    for indice, cultura in enumerate(CULTURAS_VALIDAS, start=1):
+        print(f"  {indice} - {cultura}")
+    while True:
+        opcao = ler_int("Escolha a cultura pelo número: ", minimo=1)
+        if opcao <= len(CULTURAS_VALIDAS):
+            return CULTURAS_VALIDAS[opcao - 1]
+        print("Opção inválida.")
 
 
-def limpar_tela():
-    os.system("cls" if os.name == "nt" else "clear")
+def calcular_area_retangulo(largura_m, comprimento_m):
+    return largura_m * comprimento_m
 
 
-# ---------------------------------------------------------------------------
-# 1) ENTRADA DE DADOS (cadastro de um novo registro de plantio)
-# ---------------------------------------------------------------------------
-def cadastrar_dados():
-    print("\n===== CADASTRO DE NOVO PLANTIO =====")
-    print("1 - Cafe (area retangular)")
-    print("2 - Cana-de-acucar (area trapezoidal)")
+def calcular_volume_insumo_litros(taxa_ml_por_metro, comprimento_m, num_ruas):
+    total_ml = taxa_ml_por_metro * comprimento_m * num_ruas
+    return total_ml / 1000
 
-    opcao_cultura = input("Escolha a cultura (1/2): ").strip()
 
-    if opcao_cultura == "1":
-        # ---------- CAFE ----------
-        cultura = "Cafe"
-        formato = "Retangulo"
+def montar_talhao():
+    cultura = escolher_cultura()
+    largura_m = ler_float("Largura do talhão (m): ")
+    comprimento_m = ler_float("Comprimento do talhão / de cada rua (m): ")
+    num_ruas = ler_int("Número de ruas da lavoura: ")
+    produto = ler_texto("Produto/insumo a aplicar (ex: Fosfato): ")
+    taxa_ml_por_metro = ler_float("Taxa de aplicação (mL por metro de rua): ")
 
-        print("\n-- Dados da area (retangulo) --")
-        comprimento = ler_float("Comprimento do talhao (m): ")
-        largura = ler_float("Largura do talhao (m): ")
-        area = calcular_area_retangulo(comprimento, largura)
-        dimensoes = (comprimento, largura)
+    return {
+        "cultura": cultura,
+        "largura_m": largura_m,
+        "comprimento_m": comprimento_m,
+        "area_m2": calcular_area_retangulo(largura_m, comprimento_m),
+        "num_ruas": num_ruas,
+        "produto": produto,
+        "taxa_ml_por_metro": taxa_ml_por_metro,
+        "volume_litros": calcular_volume_insumo_litros(taxa_ml_por_metro, comprimento_m, num_ruas),
+    }
 
-        print("\n-- Manejo de insumo: Fosfato (pulverizacao com trator) --")
-        num_ruas = ler_int("Quantidade de ruas (linhas de plantio): ")
-        comprimento_rua = ler_float("Comprimento de cada rua (m): ")
-        taxa = ler_float("Taxa de aplicacao (mL por metro de rua): ")
 
-        insumo = "Fosfato"
-        total_litros = calcular_insumo_cafe(num_ruas, comprimento_rua, taxa)
+def cadastrar_talhao():
+    print("\n--- Cadastro de novo talhão ---")
+    talhao = montar_talhao()
+    talhoes.append(talhao)
+    exportar_csv()
+    print(f"\nTalhão cadastrado com sucesso na posição {len(talhoes) - 1}.")
+    exibir_talhao(talhao, len(talhoes) - 1)
 
-    elif opcao_cultura == "2":
-        # ---------- CANA-DE-ACUCAR ----------
-        cultura = "Cana-de-acucar"
-        formato = "Trapezio"
 
-        print("\n-- Dados da area (trapezio) --")
-        base_maior = ler_float("Base maior do talhao (m): ")
-        base_menor = ler_float("Base menor do talhao (m): ")
-        altura = ler_float("Altura (distancia entre as bases, em m): ")
-        area = calcular_area_trapezio(base_maior, base_menor, altura)
-        dimensoes = (base_maior, base_menor, altura)
+def exibir_talhao(talhao, posicao):
+    print(f"\n[{posicao}] Cultura: {talhao['cultura']}")
+    print(f"    Dimensões: {talhao['largura_m']} m x {talhao['comprimento_m']} m")
+    print(f"    Área de plantio: {talhao['area_m2']:.2f} m²")
+    print(f"    Número de ruas: {talhao['num_ruas']}")
+    print(f"    Insumo: {talhao['produto']} - {talhao['taxa_ml_por_metro']} mL/m")
+    print(f"    Volume total necessário: {talhao['volume_litros']:.2f} litros")
 
-        print("\n-- Manejo de insumo: Herbicida (aplicacao por hectare) --")
-        taxa = ler_float("Taxa de aplicacao (litros por hectare): ")
 
-        insumo = "Herbicida"
-        total_litros = calcular_insumo_cana(area, taxa)
-
-    else:
-        print(">> Opcao invalida. Cadastro cancelado.")
+def listar_talhoes():
+    print("\n--- Talhões cadastrados ---")
+    if not talhoes:
+        print("Nenhum talhão cadastrado ainda.")
         return
-
-    # Grava nos vetores paralelos (mesma posicao em todos os vetores)
-    vetor_cultura.append(cultura)
-    vetor_formato.append(formato)
-    vetor_dimensoes.append(dimensoes)
-    vetor_area_m2.append(area)
-    vetor_insumo.append(insumo)
-    vetor_taxa_insumo.append(taxa)
-    vetor_qtd_total_l.append(total_litros)
-
-    print(f"\n>> Registro cadastrado com sucesso na posicao {len(vetor_cultura) - 1}!")
-    print(f">> Area calculada: {area:.2f} m2")
-    print(f">> Total de {insumo.lower()} necessario: {total_litros:.2f} litros")
+    for posicao, talhao in enumerate(talhoes):
+        exibir_talhao(talhao, posicao)
 
 
-# ---------------------------------------------------------------------------
-# 2) SAIDA DE DADOS (listagem no terminal)
-# ---------------------------------------------------------------------------
-def listar_dados():
-    print("\n===== DADOS CADASTRADOS =====")
-    if len(vetor_cultura) == 0:
-        print("Nenhum registro cadastrado ainda.")
+def escolher_posicao_existente():
+    if not talhoes:
+        print("Nenhum talhão cadastrado ainda.")
+        return None
+    listar_talhoes()
+    while True:
+        posicao = ler_int("Digite a posição do talhão (vetor começa em 0): ", minimo=0)
+        if posicao < len(talhoes):
+            return posicao
+        print("Posição inválida.")
+
+
+def atualizar_talhao():
+    print("\n--- Atualizar talhão ---")
+    posicao = escolher_posicao_existente()
+    if posicao is None:
         return
-
-    for i in range(len(vetor_cultura)):
-        print(f"\n--- Posicao {i} ---")
-        print(f"Cultura........: {vetor_cultura[i]}")
-        print(f"Formato da area: {vetor_formato[i]}")
-        print(f"Dimensoes (m)..: {vetor_dimensoes[i]}")
-        print(f"Area calculada.: {vetor_area_m2[i]:.2f} m2")
-        print(f"Insumo.........: {vetor_insumo[i]}")
-        if vetor_cultura[i] == "Cafe":
-            print(f"Taxa...........: {vetor_taxa_insumo[i]:.2f} mL/metro de rua")
-        else:
-            print(f"Taxa...........: {vetor_taxa_insumo[i]:.2f} L/hectare")
-        print(f"Total necessario: {vetor_qtd_total_l[i]:.2f} litros")
+    print("\nDigite os novos dados:")
+    talhoes[posicao] = montar_talhao()
+    exportar_csv()
+    print("\nTalhão atualizado com sucesso.")
+    exibir_talhao(talhoes[posicao], posicao)
 
 
-# ---------------------------------------------------------------------------
-# 3) ATUALIZACAO DE DADOS (numa posicao qualquer do vetor)
-# ---------------------------------------------------------------------------
-def atualizar_dados():
-    print("\n===== ATUALIZACAO DE DADOS =====")
-    if len(vetor_cultura) == 0:
-        print("Nenhum registro cadastrado ainda.")
+def deletar_talhao():
+    print("\n--- Deletar talhão ---")
+    posicao = escolher_posicao_existente()
+    if posicao is None:
         return
-
-    listar_dados()
-    posicao = ler_int("\nDigite a posicao que deseja atualizar: ")
-
-    if posicao < 0 or posicao >= len(vetor_cultura):
-        print(">> Posicao invalida.")
-        return
-
-    print(f"\nAtualizando registro da cultura: {vetor_cultura[posicao]}")
-
-    if vetor_cultura[posicao] == "Cafe":
-        comprimento = ler_float("Novo comprimento do talhao (m): ")
-        largura = ler_float("Nova largura do talhao (m): ")
-        area = calcular_area_retangulo(comprimento, largura)
-        vetor_dimensoes[posicao] = (comprimento, largura)
-
-        num_ruas = ler_int("Nova quantidade de ruas: ")
-        comprimento_rua = ler_float("Novo comprimento de cada rua (m): ")
-        taxa = ler_float("Nova taxa de aplicacao (mL/metro): ")
-        total_litros = calcular_insumo_cafe(num_ruas, comprimento_rua, taxa)
-
-    else:  # Cana-de-acucar
-        base_maior = ler_float("Nova base maior (m): ")
-        base_menor = ler_float("Nova base menor (m): ")
-        altura = ler_float("Nova altura (m): ")
-        area = calcular_area_trapezio(base_maior, base_menor, altura)
-        vetor_dimensoes[posicao] = (base_maior, base_menor, altura)
-
-        taxa = ler_float("Nova taxa de aplicacao (L/hectare): ")
-        total_litros = calcular_insumo_cana(area, taxa)
-
-    vetor_area_m2[posicao] = area
-    vetor_taxa_insumo[posicao] = taxa
-    vetor_qtd_total_l[posicao] = total_litros
-
-    print(f"\n>> Registro na posicao {posicao} atualizado com sucesso!")
+    removido = talhoes.pop(posicao)
+    exportar_csv()
+    print(f"\nTalhão da cultura {removido['cultura']} removido da posição {posicao}.")
 
 
-# ---------------------------------------------------------------------------
-# 4) DELECAO DE DADOS
-# ---------------------------------------------------------------------------
-def deletar_dados():
-    print("\n===== DELECAO DE DADOS =====")
-    if len(vetor_cultura) == 0:
-        print("Nenhum registro cadastrado ainda.")
-        return
-
-    listar_dados()
-    posicao = ler_int("\nDigite a posicao que deseja deletar: ")
-
-    if posicao < 0 or posicao >= len(vetor_cultura):
-        print(">> Posicao invalida.")
-        return
-
-    confirmacao = input(f"Confirma a delecao do registro {posicao} ({vetor_cultura[posicao]})? (S/N): ").strip().upper()
-    if confirmacao == "S":
-        vetor_cultura.pop(posicao)
-        vetor_formato.pop(posicao)
-        vetor_dimensoes.pop(posicao)
-        vetor_area_m2.pop(posicao)
-        vetor_insumo.pop(posicao)
-        vetor_taxa_insumo.pop(posicao)
-        vetor_qtd_total_l.pop(posicao)
-        print(">> Registro deletado com sucesso!")
-    else:
-        print(">> Operacao cancelada.")
-
-
-# ---------------------------------------------------------------------------
-# EXTRA: EXPORTAR DADOS PARA CSV (usado depois pelo script em R)
-# ---------------------------------------------------------------------------
-def exportar_csv(caminho="dados_lavoura.csv"):
-    print("\n===== EXPORTAR DADOS PARA CSV =====")
-    if len(vetor_cultura) == 0:
-        print("Nenhum registro cadastrado ainda. Nada para exportar.")
-        return
-
-    with open(caminho, "w", encoding="utf-8") as arquivo:
-        arquivo.write("cultura,formato,area_m2,insumo,taxa,qtd_total_litros\n")
-        for i in range(len(vetor_cultura)):
-            linha = (
-                f"{vetor_cultura[i]},{vetor_formato[i]},"
-                f"{vetor_area_m2[i]:.2f},{vetor_insumo[i]},"
-                f"{vetor_taxa_insumo[i]:.2f},{vetor_qtd_total_l[i]:.2f}\n"
-            )
-            arquivo.write(linha)
-
-    print(f">> Dados exportados para '{caminho}' com sucesso!")
-    print(">> Esse arquivo pode ser lido pelo script estatisticas.R")
-
-
-# ---------------------------------------------------------------------------
-# MENU PRINCIPAL
-# ---------------------------------------------------------------------------
 def exibir_menu():
     print("\n" + "=" * 45)
-    print("   FARMTECH SOLUTIONS - AGRICULTURA DIGITAL")
+    print("   FarmTech Solutions - Agricultura Digital")
     print("=" * 45)
-    print("1 - Entrada de dados (cadastrar plantio)")
-    print("2 - Saida de dados (listar registros)")
-    print("3 - Atualizar dados")
-    print("4 - Deletar dados")
-    print("5 - Exportar dados para CSV (integracao com R)")
-    print("6 - Sair do programa")
-    print("=" * 45)
+    print("1 - Cadastrar talhão (entrada de dados)")
+    print("2 - Listar talhões (saída de dados)")
+    print("3 - Atualizar talhão")
+    print("4 - Deletar talhão")
+    print("5 - Sair")
 
 
 def main():
-    opcao = None
-    while opcao != "6":
+    while True:
         exibir_menu()
-        opcao = input("Escolha uma opcao: ").strip()
+        opcao = input("Escolha uma opção: ").strip()
 
         if opcao == "1":
-            cadastrar_dados()
+            cadastrar_talhao()
         elif opcao == "2":
-            listar_dados()
+            listar_talhoes()
         elif opcao == "3":
-            atualizar_dados()
+            atualizar_talhao()
         elif opcao == "4":
-            deletar_dados()
+            deletar_talhao()
         elif opcao == "5":
-            exportar_csv()
-        elif opcao == "6":
-            print("\nEncerrando o programa. Ate logo!")
+            print("\nEncerrando o programa. Até logo!")
+            break
         else:
-            print(">> Opcao invalida. Escolha um numero de 1 a 6.")
-
-        if opcao != "6":
-            pausar()
+            print("\nOpção inválida. Escolha um número de 1 a 5.")
 
 
 if __name__ == "__main__":
